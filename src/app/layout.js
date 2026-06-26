@@ -1,4 +1,5 @@
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata = {
   title: 'ReSell Hub | Sustainable Second-Hand Marketplace',
@@ -9,9 +10,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
-        <main className="flex-grow">
-          {children}
-        </main>
+        <AuthProvider>
+          <main className="flex-grow">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

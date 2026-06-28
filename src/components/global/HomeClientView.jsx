@@ -4,6 +4,7 @@
     import { motion } from "framer-motion";
 import Hero from "../Hero";
 import PopularCategories from "./PopularCategories";
+import FeaturedProducts from "./FeaturedProducts";
     // Import your Theme Context hook if needed, but Tailwind's class strategy 
     // will automatically pick up changes if your ThemeContext toggles the 'dark' class on the document root.
 
@@ -13,11 +14,7 @@ import PopularCategories from "./PopularCategories";
 
         <Hero></Hero>
         <PopularCategories></PopularCategories>
-        
-        {/* Section 3: Popular Categories */}
-        <section id="popular-categories" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
+        <FeaturedProducts></FeaturedProducts>
 
         {/* Section 4: Success Stories */}
         <section id="success-stories" className="w-full py-16">

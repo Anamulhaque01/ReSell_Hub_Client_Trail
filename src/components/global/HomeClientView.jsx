@@ -5,6 +5,7 @@
 import Hero from "../Hero";
 import PopularCategories from "./PopularCategories";
 import FeaturedProducts from "./FeaturedProducts";
+import MarketplaceStats from "./MarketplaceStats";
     // Import your Theme Context hook if needed, but Tailwind's class strategy 
     // will automatically pick up changes if your ThemeContext toggles the 'dark' class on the document root.
 
@@ -15,26 +16,7 @@ import FeaturedProducts from "./FeaturedProducts";
         <Hero></Hero>
         <PopularCategories></PopularCategories>
         <FeaturedProducts></FeaturedProducts>
-
-        {/* Section 4: Success Stories */}
-        <section id="success-stories" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
-
-        {/* Section 5: Marketplace Statistics */}
-        <section id="marketplace-stats" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
-
-        {/* Extra Section 1: Sustainability Impact */}
-        <section id="sustainability-impact" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
-
-        {/* Extra Section 2: Trusted Sellers Showcase */}
-        <section id="trusted-sellers" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
+        <MarketplaceStats></MarketplaceStats>
         
         </main>
     );

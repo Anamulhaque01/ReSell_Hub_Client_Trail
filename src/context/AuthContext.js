@@ -25,13 +25,14 @@ export function AuthProvider({ children }) {
     }, []);
 
     // Standard Login Action Wrapper
-    const login = async (email) => {
+    // Inside your login wrapper change:
+    const login = async (email, password) => { // Accept password parameter explicitly
         setLoading(true);
         try {
             const res = await fetch('http://localhost:5000/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, password }), // Send password array block
             });
 
             const data = await res.json();

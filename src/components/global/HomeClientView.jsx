@@ -3,20 +3,17 @@
 
     import { motion } from "framer-motion";
 import Hero from "../Hero";
+import PopularCategories from "./PopularCategories";
     // Import your Theme Context hook if needed, but Tailwind's class strategy 
     // will automatically pick up changes if your ThemeContext toggles the 'dark' class on the document root.
 
     export default function HomeClientView() {
     return (
         <main className="w-full min-h-screen bg-[#FAF9F6] text-[#1A1A1A] dark:bg-[#121212] dark:text-[#F5F5F5] transition-colors duration-300 overflow-x-hidden">
-        
+
         <Hero></Hero>
-
-        {/* Section 2: Featured Products */}
-        <section id="featured-products" className="w-full py-16">
-            {/* Placeholder for layout */}
-        </section>
-
+        <PopularCategories></PopularCategories>
+        
         {/* Section 3: Popular Categories */}
         <section id="popular-categories" className="w-full py-16">
             {/* Placeholder for layout */}

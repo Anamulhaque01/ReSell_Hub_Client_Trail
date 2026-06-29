@@ -1,182 +1,227 @@
 'use client';
-import { useState, useEffect, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-// Import your custom hook to track active layout state
 import { useTheme } from '@/context/ThemeContext';
 
-export default function SellerDashboardOverview() {
+export default function SellerDashboard() {
   const { theme } = useTheme();
-  const [data, setData] = useState({
-    stats: {
-      totalProducts: 0,
-      totalSales: 0,
-      totalRevenue: 0,
-      pendingOrders: 0,
-      activeListings: 0,
-      approvedCount: 0,
-      pendingApprovalCount: 0,
-      rejectedCount: 0
-    },
-    recentOrders: []
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalSales: 0,
+    totalRevenue: 0,
+    activeListings: 0,
+    approvedCount: 0,
+    pendingApprovalCount: 0,
+    rejectedCount: 0
   });
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch Stats and Inventory data parallelly from backend endpoints
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('resell_token');
+
+      // 1. Fetch performance stats matrix
+      const statsRes = await fetch('http://localhost:5000/api/seller/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const statsData = await statsRes.json();
+
+      // 2. Fetch specific products listed by active seller
+      const productsRes = await fetch('http://localhost:5000/api/seller/products', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const productsData = await productsRes.json();
+
+      if (statsRes.ok && productsRes.ok) {
+        setStats(statsData.stats);
+        setProducts(productsData);
+      } else {
+        setError(statsData.message || productsData.message || 'Failed to gather dashboard context details.');
+      }
+    } catch (err) {
+      setError('Network communication failure encountered.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchDashboardMetrics() {
-      try {
-        const response = await fetch('/api/seller/stats', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('resell_token')}`
-          }
-        });
-        if (response.ok) {
-          const resData = await response.json();
-          setData(resData);
-        }
-      } catch (error) {
-        console.error("Error reading dashboard tracking summary data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDashboardMetrics();
+    fetchDashboardData();
   }, []);
+
+  // Handle live database deletion operations
+  const handleDeleteProduct = async (productId) => {
+    if (!confirm('Are you absolutely sure you want to remove this product listing from the marketplace database?')) return;
+
+    try {
+      const token = localStorage.getItem('resell_token');
+      const response = await fetch(`http://localhost:5000/api/seller/products/${productId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        // Refresh values instantly across visual frames without deep full-page reloads
+        fetchDashboardData();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to complete deletion process pipeline.');
+      }
+    } catch (err) {
+      alert('Network transmission barrier occurred during deletion.');
+    }
+  };
+
+  // Dynamic Swiss Minimalist Color Profiles matching light/dark context screens perfectly
+  const isDark = theme === 'dark';
+  const bgFrame = isDark ? 'bg-[#09090b] text-white' : 'bg-zinc-50 text-zinc-900';
+  const cardBg = isDark ? 'bg-[#0e0e11] border-zinc-800/80' : 'bg-white border-zinc-200/80 shadow-sm';
+  const subText = isDark ? 'text-zinc-500' : 'text-zinc-400';
+  const labelText = isDark ? 'text-zinc-400' : 'text-zinc-600';
+  const tableBorder = isDark ? 'border-zinc-800/60' : 'border-zinc-100';
+  const rowHover = isDark ? 'hover:bg-zinc-900/40' : 'hover:bg-zinc-50/80';
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="h-6 w-6 border-2 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center min-h-[60vh] text-xs font-semibold tracking-widest text-zinc-500 animate-pulse">
+        SYNCING REALTIME DATABASE INDICES...
       </div>
     );
   }
 
-  // Dynamic theme wrapper styles
-  const cardBg = theme === 'dark' ? 'bg-[#0e0e11] border-zinc-800/80' : 'bg-white border-zinc-200 shadow-sm';
-  const textMain = theme === 'dark' ? 'text-white' : 'text-zinc-900';
-  const textMuted = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500';
-
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header Profile Title */}
-      <div className="flex items-center justify-between">
+    <div className={`space-y-8 py-2 min-h-screen transition-colors duration-200 ${bgFrame}`}>
+      
+      {/* Upper Dashboard Welcome Segment */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className={`text-2xl font-bold tracking-tight ${textMain}`}>Seller Dashboard</h1>
-          <p className={`${textMuted} text-xs mt-1`}>Welcome back, Alex!</p>
+          <h1 className="text-2xl font-bold tracking-tight">Seller Hub Overview</h1>
+          <p className={`text-xs mt-1 ${subText}`}>Monitor active sales revenue parameters and catalog entries.</p>
         </div>
         <Link 
           href="/dashboard/seller/add-product"
-          className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded transition-colors inline-flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2.5 rounded transition-all shadow-sm"
         >
-          <span className="text-sm font-semibold">+</span> Add Product
+          + Add New Product
         </Link>
       </div>
 
-      {/* Grid Container Matrix */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1 */}
-        <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${cardBg}`}>
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs mb-4 ${
-            theme === 'dark' ? 'bg-blue-950/40 border border-blue-900/40 text-blue-400' : 'bg-blue-50 text-blue-600'
-          }`}>
-            📦
-          </div>
-          <p className={`text-3xl font-bold tracking-tight ${textMain}`}>{data.stats.totalProducts}</p>
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">My Products</p>
+      {error && (
+        <div className="p-3 text-xs font-semibold rounded border bg-red-950/40 text-red-400 border-red-900/50">
+          {error}
+        </div>
+      )}
+
+      {/* 1. Real-Time Stats Grid Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-medium">
+        
+        <div className={`border rounded-xl p-5 transition-colors ${cardBg}`}>
+          <p className={`font-semibold tracking-wider uppercase text-[10px] ${subText}`}>Total Revenue</p>
+          <p className="text-2xl font-bold tracking-tight mt-1.5 text-emerald-500">${stats.totalRevenue.toFixed(2)}</p>
         </div>
 
-        {/* Metric 2 */}
-        <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${cardBg}`}>
-          <span className={`absolute top-3 right-3 h-4 w-4 text-[9px] rounded-full flex items-center justify-center font-bold border ${
-            theme === 'dark' ? 'bg-red-950 text-red-400 border-red-900' : 'bg-red-50 text-red-600 border-red-200'
-          }`}>
-            1
-          </span>
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs mb-4 ${
-            theme === 'dark' ? 'bg-purple-950/40 border border-purple-900/40 text-purple-400' : 'bg-purple-50 text-purple-600'
-          }`}>
-            💼
-          </div>
-          <p className={`text-3xl font-bold tracking-tight ${textMain}`}>{data.stats.totalSales}</p>
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">Total Orders</p>
+        <div className={`border rounded-xl p-5 transition-colors ${cardBg}`}>
+          <p className={`font-semibold tracking-wider uppercase text-[10px] ${subText}`}>Products Listed</p>
+          <p className="text-2xl font-bold tracking-tight mt-1.5">{stats.totalProducts}</p>
         </div>
 
-        {/* Metric 3 */}
-        <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${cardBg}`}>
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs mb-4 ${
-            theme === 'dark' ? 'bg-emerald-950/40 border border-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-          }`}>
-            $
-          </div>
-          <p className={`text-3xl font-bold tracking-tight ${textMain}`}>${data.stats.totalRevenue.toLocaleString()}</p>
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">Total Revenue</p>
+        <div className={`border rounded-xl p-5 transition-colors ${cardBg}`}>
+          <p className={`font-semibold tracking-wider uppercase text-[10px] ${subText}`}>Successful Sales</p>
+          <p className="text-2xl font-bold tracking-tight mt-1.5 text-blue-500">{stats.totalSales}</p>
         </div>
 
-        {/* Metric 4 */}
-        <div className={`border rounded-xl p-5 relative overflow-hidden transition-colors ${cardBg}`}>
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs mb-4 ${
-            theme === 'dark' ? 'bg-cyan-950/40 border border-cyan-900/40 text-cyan-400' : 'bg-cyan-50 text-cyan-600'
-          }`}>
-            📈
-          </div>
-          <p className={`text-3xl font-bold tracking-tight ${textMain}`}>{data.stats.activeListings}</p>
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">Active Listings</p>
+        <div className={`border rounded-xl p-5 transition-colors ${cardBg}`}>
+          <p className={`font-semibold tracking-wider uppercase text-[10px] ${subText}`}>Live Active Items</p>
+          <p className="text-2xl font-bold tracking-tight mt-1.5 text-amber-500">{stats.activeListings}</p>
         </div>
+
       </div>
 
-      {/* Recent Orders Processing Table Block Framework */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className={`text-sm font-semibold tracking-wide ${theme === 'dark' ? 'text-zinc-200' : 'text-zinc-700'}`}>Recent Orders</h3>
-          <Link href="/dashboard/seller/orders" className="text-xs font-medium text-blue-500 hover:underline inline-flex items-center gap-1">
-            View All <span className="text-[10px]">→</span>
-          </Link>
+      {/* 2. Live Inventory Catalog Management Area */}
+      <div className={`border rounded-xl overflow-hidden transition-colors ${cardBg}`}>
+        <div className={`p-5 border-b ${tableBorder}`}>
+          <h2 className="text-sm font-bold tracking-tight">Active Inventory Directory</h2>
+          <p className={`text-[11px] mt-0.5 ${subText}`}>Direct transactional lifecycle control for your listed products.</p>
         </div>
 
-        <div className={`border rounded-xl divide-y transition-colors ${cardBg} ${theme === 'dark' ? 'divide-zinc-900' : 'divide-zinc-100'}`}>
-          {data.recentOrders.length === 0 ? (
-            <div className={`p-6 text-center text-xs ${textMuted}`}>No active incoming orders recorded.</div>
-          ) : (
-            data.recentOrders.map((order) => (
-              <div key={order._id} className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors">
-                <div className="space-y-0.5">
-                  <h4 className={`text-xs font-semibold ${theme === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>{order.productTitle}</h4>
-                  <p className="text-[11px] text-zinc-500">Buyer: {order.buyerInfo?.name}</p>
-                </div>
-                <div className="flex items-center gap-6">
-                  <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${
-                    order.orderStatus === 'delivered' 
-                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50'
-                      : order.orderStatus === 'cancelled'
-                      ? 'bg-red-950/40 text-red-400 border-red-900/50'
-                      : 'bg-amber-950/40 text-amber-400 border-amber-900/50'
-                  }`}>
-                    {order.orderStatus}
-                  </span>
-                  <span className={`text-xs font-bold w-16 text-right ${theme === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>${order.amount}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Base Validation Section: Products Status Panels */}
-      <div className="space-y-3">
-        <h3 className={`text-sm font-semibold tracking-wide ${theme === 'dark' ? 'text-zinc-200' : 'text-zinc-700'}`}>Products Status</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className={`border rounded-xl p-4 text-center transition-colors ${cardBg}`}>
-            <p className="text-xl font-bold text-emerald-500">{data.stats.approvedCount}</p>
-            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-1">Approved</p>
+        {products.length === 0 ? (
+          <div className="p-10 text-center text-xs text-zinc-500 font-medium">
+            No live marketplace configurations found. Click "+ Add New Product" to initialize your first item document entry.
           </div>
-          <div className={`border rounded-xl p-4 text-center transition-colors ${cardBg}`}>
-            <p className="text-xl font-bold text-amber-500">{data.stats.pendingApprovalCount}</p>
-            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-1">Pending</p>
+        ) : (
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className={`border-b font-bold ${tableBorder} ${isDark ? 'bg-zinc-900/30' : 'bg-zinc-50/50'} ${labelText}`}>
+                  <th className="p-4">Item Details</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Condition</th>
+                  <th className="p-4">Price</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/40 font-medium">
+                {products.map((product) => (
+                  <tr key={product._id} className={`transition-colors ${rowHover} ${tableBorder}`}>
+                    {/* Visual Media Thumbnail Preview mapping */}
+                    <td className="p-4 flex items-center gap-3">
+                      <img 
+                        src={product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'} 
+                        alt={product.title}
+                        className="w-10 h-10 object-cover rounded bg-zinc-800 border border-zinc-700/50"
+                      />
+                      <div>
+                        <p className="font-bold tracking-tight">{product.title}</p>
+                        <p className={`text-[10px] mt-0.5 font-mono ${subText}`}>{product._id}</p>
+                      </div>
+                    </td>
+                    
+                    <td className="p-4 text-zinc-400">{product.category}</td>
+                    
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        product.condition === 'Excellent' || product.condition === 'Like New'
+                          ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30'
+                          : 'bg-zinc-800 text-zinc-300'
+                      }`}>
+                        {product.condition}
+                      </span>
+                    </td>
+                    
+                    <td className="p-4 font-bold text-blue-500">${product.price}</td>
+                    
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        product.status === 'available'
+                          ? 'bg-amber-500/10 text-amber-500'
+                          : 'bg-zinc-500/10 text-zinc-500'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'available' ? 'bg-amber-500' : 'bg-zinc-500'}`} />
+                        {product.status}
+                      </span>
+                    </td>
+                    
+                    {/* Management Action Call Triggers */}
+                    <td className="p-4 text-right space-x-2">
+                      <button
+                        onClick={() => handleDeleteProduct(product._id)}
+                        className="text-red-500 hover:text-red-400 font-bold transition-colors px-2 py-1 hover:bg-red-500/10 rounded"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className={`border rounded-xl p-4 text-center transition-colors ${cardBg}`}>
-            <p className="text-xl font-bold text-red-500">{data.stats.rejectedCount}</p>
-            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mt-1">Rejected</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => { // Accept password parameter explicitly
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/login', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }), // Send password array block
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
     const registerUser = async (userData) => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/register', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userData),

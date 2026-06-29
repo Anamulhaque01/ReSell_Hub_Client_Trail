@@ -29,7 +29,7 @@ export default function ProfileSettings() {
         storedToken = storedToken.replace(/^"|"$/g, '').trim(); 
         const cleanToken = storedToken.startsWith('Bearer ') ? storedToken : `Bearer ${storedToken}`;
 
-        const res = await fetch('http://localhost:5000/api/user/profile', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
           method: 'GET',
           headers: { 
             'Authorization': cleanToken,
@@ -77,7 +77,7 @@ export default function ProfileSettings() {
         bio: profile.bio
       };
 
-      const res = await fetch('http://localhost:5000/api/user/profile', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

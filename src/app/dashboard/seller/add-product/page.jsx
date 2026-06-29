@@ -51,7 +51,7 @@ export default function AddProductPage() {
         description: formData.description.trim()
       };
 
-      const response = await fetch('http://localhost:5000/api/seller/products', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

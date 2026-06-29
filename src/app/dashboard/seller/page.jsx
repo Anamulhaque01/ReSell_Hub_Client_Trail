@@ -26,13 +26,13 @@ export default function SellerDashboard() {
       const token = localStorage.getItem('resell_token');
 
       // 1. Fetch performance stats matrix
-      const statsRes = await fetch('http://localhost:5000/api/seller/stats', {
+      const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statsData = await statsRes.json();
 
       // 2. Fetch specific products listed by active seller
-      const productsRes = await fetch('http://localhost:5000/api/seller/products', {
+      const productsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const productsData = await productsRes.json();
@@ -60,7 +60,7 @@ export default function SellerDashboard() {
 
     try {
       const token = localStorage.getItem('resell_token');
-      const response = await fetch(`http://localhost:5000/api/seller/products/${productId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

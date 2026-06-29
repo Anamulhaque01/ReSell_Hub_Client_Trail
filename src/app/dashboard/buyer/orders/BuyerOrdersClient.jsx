@@ -18,7 +18,7 @@ export default function BuyerOrdersClient() {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/buyer/overview', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/overview`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ export default function BuyerOrdersClient() {
     setActionLoading(orderId);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/buyer/orders/${orderId}/cancel`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/orders/${orderId}/cancel`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

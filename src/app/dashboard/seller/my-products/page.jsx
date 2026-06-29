@@ -14,7 +14,7 @@ export default function MyProductsPage() {
   const fetchInventory = async () => {
     try {
       const token = localStorage.getItem('resell_token');
-      const response = await fetch('http://localhost:5000/api/seller/products', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -41,7 +41,7 @@ export default function MyProductsPage() {
 
     try {
       const token = localStorage.getItem('resell_token');
-      const response = await fetch(`http://localhost:5000/api/seller/products/${productId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

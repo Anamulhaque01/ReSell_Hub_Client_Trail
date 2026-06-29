@@ -29,7 +29,7 @@ export default function EditProductPage({ params }) { // <-- Destructure params 
         const token = localStorage.getItem('resell_token');
         
         // Switched to the authenticated seller route with Authorization headers
-        const res = await fetch(`http://localhost:5000/api/seller/products/${params.id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products/${params.id}`, {
           headers: { 
             'Authorization': `Bearer ${token}` 
           }
@@ -66,7 +66,7 @@ export default function EditProductPage({ params }) { // <-- Destructure params 
 
     try {
       const token = localStorage.getItem('resell_token');
-      const res = await fetch(`http://localhost:5000/api/seller/products/${params.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/products/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

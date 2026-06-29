@@ -26,7 +26,7 @@
             }
             }
 
-            const response = await fetch('http://localhost:5000/api/buyer/overview', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/overview`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

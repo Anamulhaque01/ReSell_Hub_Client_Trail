@@ -56,7 +56,7 @@ export default function ProfileClient() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch('http://localhost:5000/api/buyer/profile', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

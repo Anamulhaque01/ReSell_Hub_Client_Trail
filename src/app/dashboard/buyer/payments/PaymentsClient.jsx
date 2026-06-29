@@ -24,7 +24,7 @@ export default function PaymentsClient() {
 
     const fetchPayments = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/buyer/payments', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/payments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

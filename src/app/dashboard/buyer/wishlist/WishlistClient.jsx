@@ -17,7 +17,7 @@ export default function WishlistClient() {
 
     const fetchWishlist = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/buyer/wishlist', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/wishlist`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -36,7 +36,7 @@ export default function WishlistClient() {
 
   const handleRemove = async (productId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/buyer/wishlist/${productId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/wishlist/${productId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

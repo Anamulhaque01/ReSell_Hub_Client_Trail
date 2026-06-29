@@ -8,6 +8,7 @@ import FeaturedProducts from "./FeaturedProducts";
 import MarketplaceStats from "./MarketplaceStats";
 import SuccessStories from "./SuccessStories";
 import SustainabilityImpact from "./SustainabilityImpact";
+import TrustedSellers from "./TrustedSellers";
     // Import your Theme Context hook if needed, but Tailwind's class strategy 
     // will automatically pick up changes if your ThemeContext toggles the 'dark' class on the document root.
 
@@ -21,6 +22,7 @@ import SustainabilityImpact from "./SustainabilityImpact";
         <MarketplaceStats></MarketplaceStats>
         <SuccessStories></SuccessStories>
         <SustainabilityImpact></SustainabilityImpact>
+        <TrustedSellers></TrustedSellers>
         </main>
     );
     }

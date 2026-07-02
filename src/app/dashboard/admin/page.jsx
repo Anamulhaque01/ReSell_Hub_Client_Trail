@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
         const token = localStorage.getItem('token');
         
         // 2. Fetch data from backend
-        const response = await fetch('http://localhost:5000/api/admin/analytics', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/analytics`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

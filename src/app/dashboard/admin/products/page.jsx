@@ -37,7 +37,7 @@ export default function AdminManageProductsPage() {
       setError('');
       const token = getCleanToken();
       
-      let url = `http://localhost:5000/api/admin/products?search=${searchQuery}`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/admin/products?search=${searchQuery}`;
       if (statusFilter !== 'All') {
         url += `&status=${statusFilter.toLowerCase()}`;
       }
@@ -69,7 +69,7 @@ export default function AdminManageProductsPage() {
   const handleUpdateStatus = async (productId, newStatus) => {
   try {
     const token = getCleanToken();
-    const res = await fetch(`http://localhost:5000/api/admin/products/${productId}/status`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/products/${productId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ export default function AdminManageProductsPage() {
     if (!window.confirm('Delete this product permanently?')) return;
     try {
       const token = getCleanToken();
-      const res = await fetch(`http://localhost:5000/api/admin/products/${productId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -99,7 +99,7 @@ export default function AdminManageUsersPage() {
     const targetStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
     try {
       const token = getCleanToken();
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ export default function AdminManageUsersPage() {
     if (!window.confirm('Permanently delete this user from MongoDB?')) return;
     try {
       const token = getCleanToken();
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

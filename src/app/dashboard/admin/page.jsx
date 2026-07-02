@@ -4,15 +4,29 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '../../../context/ThemeContext';
 
-export default function AdminOverviewPage() {
+export default function AdminDashboardPage() {
   const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const [serverData, setServerData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Exact UI Colors based on image_44d1bc.png
+  const pageBg = isDark ? 'bg-[#0B0C0E] text-[#E2E8F0]' : 'bg-[#F8FAFC] text-[#1E293B]';
+  const cardBg = isDark ? 'bg-[#121316] border-[#1A1C1F]' : 'bg-white border-[#E2E8F0]';
+  const textHeading = isDark ? 'text-white' : 'text-[#0F172A]';
+  const textMuted = isDark ? 'text-[#6C727F]' : 'text-[#64748B]';
 
   useEffect(() => {
     async function fetchSummary() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/analytics`);
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        
+        const res = await fetch(`${baseUrl}/api/admin/analytics`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setServerData(data);
@@ -26,153 +40,185 @@ export default function AdminOverviewPage() {
     fetchSummary();
   }, []);
 
-  const metrics = serverData?.stats || { 
-    totalUsers: 19, 
-    totalProducts: 20, 
-    totalOrders: 13, 
-    totalRevenue: 21255 
-  };
-
-  const categories = serverData?.categoryPerformance || [
-    { _id: 'Mobile Phones', count: 2, color: '#3B82F6' },
-    { _id: 'Electronics', count: 5, color: '#10B981' },
-    { _id: 'Furniture', count: 3, color: '#F59E0B' },
-    { _id: 'Vehicles', count: 1, color: '#8B5CF6' },
-    { _id: 'Fashion', count: 3, color: '#EC4899' },
-    { _id: 'Sports', count: 2, color: '#06B6D4' }
-  ];
-
-  // Dynamic Theme Utilities
-  const isDark = theme === 'dark';
-  const cardBg = isDark ? 'bg-[#121315] border-[#1F2124]' : 'bg-white border-[#E5E5E5] shadow-sm';
-  const textHeading = isDark ? 'text-white' : 'text-[#1A1A1A]';
-  const textMuted = isDark ? 'text-[#64748B]' : 'text-[#71717A]';
+  const metrics = serverData?.stats || { totalUsers: 19, totalProducts: 20, totalOrders: 13 };
+  const revenueTotal = "$21,255";
 
   return (
-    <div className="space-y-6">
-      {/* Section Header */}
-      <div>
-        <h1 className={`text-2xl font-bold tracking-tight transition-colors duration-200 ${textHeading}`}>
-          Admin Overview
-        </h1>
+    <div className={`min-h-screen p-8 transition-colors duration-200 ${pageBg}`}>
+      
+      {/* Title */}
+      <div className="mb-8">
+        <h1 className={`text-2xl font-bold tracking-tight ${textHeading}`}>Admin Overview</h1>
       </div>
 
-      {/* High-Level Analytical Widget Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Users Metric Card */}
-        <div className={`border p-5 rounded-xl flex flex-col justify-between transition-colors duration-200 ${cardBg}`}>
+      {/* Top Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+        
+        {/* Total Users */}
+        <div className={`border p-5 rounded-xl flex flex-col justify-between ${cardBg}`}>
           <div>
-            <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6] mb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm mb-4">
               👥
             </div>
-            <p className={`text-2xl font-bold tracking-tight ${textHeading}`}>{metrics.totalUsers}</p>
-            <p className={`text-xs font-semibold mt-1 ${textHeading}`}>Total Users</p>
+            <h2 className="text-3xl font-bold tracking-tight">{metrics.totalUsers}</h2>
+            <p className={`text-xs font-medium mt-1 ${textHeading}`}>Total Users</p>
           </div>
-          <span className={`text-[11px] mt-2 block ${textMuted}`}>5 sellers, 13 buyers</span>
+          <p className={`text-[11px] mt-2 ${textMuted}`}>5 sellers, 14 buyers</p>
         </div>
 
-        {/* Total Products Metric Card */}
-        <div className={`border p-5 rounded-xl flex flex-col justify-between transition-colors duration-200 ${cardBg}`}>
+        {/* Total Products */}
+        <div className={`border p-5 rounded-xl flex flex-col justify-between ${cardBg}`}>
           <div>
-            <div className="w-8 h-8 rounded-lg bg-[#A855F7]/10 flex items-center justify-center text-[#A855F7] mb-4">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 text-sm mb-4">
               📦
             </div>
-            <p className={`text-2xl font-bold tracking-tight ${textHeading}`}>{metrics.totalProducts}</p>
-            <p className={`text-xs font-semibold mt-1 ${textHeading}`}>Total Products</p>
+            <h2 className="text-3xl font-bold tracking-tight">{metrics.totalProducts}</h2>
+            <p className={`text-xs font-medium mt-1 ${textHeading}`}>Total Products</p>
           </div>
-          <span className={`text-[11px] mt-2 block ${textMuted}`}>1 pending review</span>
+          <p className={`text-[11px] mt-2 ${textMuted}`}>1 pending review</p>
         </div>
 
-        {/* Total Orders Metric Card */}
-        <div className={`border p-5 rounded-xl flex flex-col justify-between transition-colors duration-200 ${cardBg}`}>
+        {/* Total Orders */}
+        <div className={`border p-5 rounded-xl flex flex-col justify-between ${cardBg}`}>
           <div>
-            <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center text-[#F59E0B] mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400 text-sm mb-4">
               💼
             </div>
-            <p className={`text-2xl font-bold tracking-tight ${textHeading}`}>{metrics.totalOrders}</p>
-            <p className={`text-xs font-semibold mt-1 ${textHeading}`}>Total Orders</p>
+            <h2 className="text-3xl font-bold tracking-tight">{metrics.totalOrders}</h2>
+            <p className={`text-xs font-medium mt-1 ${textHeading}`}>Total Orders</p>
           </div>
-          <span className={`text-[11px] mt-2 block ${textMuted}`}>2 delivered</span>
+          <p className={`text-[11px] mt-2 ${textMuted}`}>2 delivered</p>
         </div>
 
-        {/* Total Revenue Metric Card */}
-        <div className={`border p-5 rounded-xl flex flex-col justify-between transition-colors duration-200 ${cardBg}`}>
+        {/* Total Revenue */}
+        <div className={`border p-5 rounded-xl flex flex-col justify-between ${cardBg}`}>
           <div>
-            <div className="w-8 h-8 rounded-lg bg-[#10B981]/10 flex items-center justify-center text-[#10B981] mb-4">
-              $
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-sm mb-4">
+              💲
             </div>
-            <p className={`text-2xl font-bold tracking-tight ${textHeading}`}>
-              ${metrics.totalRevenue.toLocaleString()}
-            </p>
-            <p className={`text-xs font-semibold mt-1 ${textHeading}`}>Total Revenue</p>
+            <h2 className="text-3xl font-bold tracking-tight text-white">{revenueTotal}</h2>
+            <p className={`text-xs font-medium mt-1 ${textHeading}`}>Total Revenue</p>
           </div>
-          <span className={`text-[11px] mt-2 block ${textMuted}`}>From paid orders</span>
+          <p className={`text-[11px] mt-2 ${textMuted}`}>From paid orders</p>
+        </div>
+
+      </div>
+
+      {/* Middle Block: Revenue Overview Bar Layout */}
+      <div className={`border p-6 rounded-xl mb-6 ${cardBg}`}>
+        <h3 className={`text-sm font-semibold mb-8 ${textHeading}`}>Revenue Overview (Last 6 Months)</h3>
+        
+        <div className="h-64 flex items-end justify-between gap-3 pt-6 border-b border-gray-800/40 px-2">
+          {/* Feb */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-gray-400">$20</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm opacity-80 h-[2%] transition-all duration-500"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>Feb</span>
+          </div>
+          {/* Mar */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-gray-400">$45</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm opacity-80 h-[4%] transition-all duration-500"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>Mar</span>
+          </div>
+          {/* Apr */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-gray-400">$750</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm h-[8%] transition-all duration-500"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>Apr</span>
+          </div>
+          {/* May */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-white font-medium">$19.7k</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm h-[75%] shadow-lg shadow-blue-500/10"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>May</span>
+          </div>
+          {/* Jun */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-gray-400">$810</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm h-[9%] transition-all duration-500"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>Jun</span>
+          </div>
+          {/* Jul */}
+          <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+            <span className="text-[10px] text-gray-400">$10</span>
+            <div className="w-full bg-[#3B82F6] rounded-t-sm opacity-80 h-[1%] transition-all duration-500"></div>
+            <span className={`text-[11px] mt-1 ${textMuted}`}>Jul</span>
+          </div>
         </div>
       </div>
 
-      {/* Main Analytics Core Panels Grid */}
+      {/* Bottom Row Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Trend Graph Container Box */}
-        <div className={`border p-6 rounded-xl lg:col-span-2 transition-colors duration-200 ${cardBg}`}>
-          <div className="mb-6">
-            <h3 className={`text-sm font-bold ${textHeading}`}>Revenue Overview (Last 6 Months)</h3>
-          </div>
-          
-          <div className={`h-64 flex items-end gap-3 pt-6 border-b relative ${isDark ? 'border-[#1F2124]' : 'border-[#E5E5E5]'}`}>
-            {['Jan', 'Feb', 'Mar'].map((month) => (
-              <div key={month} className="w-full flex flex-col justify-end items-center h-full group">
-                <span className={`text-[10px] mb-1 opacity-0 group-hover:opacity-100 transition-opacity ${textMuted}`}>$0</span>
-                <div className={`w-full h-[2px] rounded-t ${isDark ? 'bg-[#1F2124]' : 'bg-[#E5E5E5]'}`}></div>
-                <span className={`text-[10px] mt-2 ${textMuted}`}>{month}</span>
-              </div>
-            ))}
+        
+        {/* User Growth Component Layout */}
+        <div className={`border p-6 rounded-xl lg:col-span-2 flex flex-col justify-between ${cardBg}`}>
+          <h3 className={`text-sm font-semibold mb-4 ${textHeading}`}>User Growth</h3>
+          <div className="h-44 relative w-full mt-2 flex flex-col justify-between">
+            {/* Background Grid Horizontal Lines lines */}
+            <div className="w-full border-t border-gray-800/30 h-0"></div>
+            <div className="w-full border-t border-gray-800/30 h-0"></div>
+            <div className="w-full border-t border-gray-800/30 h-0"></div>
             
-            <div className="w-full flex flex-col justify-end items-center h-full group">
-              <span className={`text-[11px] mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>$750</span>
-              <div className="w-full bg-[#2563EB]/40 h-[10%] rounded-t border-t border-[#3B82F6]"></div>
-              <span className={`text-[10px] mt-2 ${textMuted}`}>Apr</span>
-            </div>
-
-            <div className="w-full flex flex-col justify-end items-center h-full group">
-              <span className={`text-[11px] font-semibold mb-1 ${textHeading}`}>$19.7k</span>
-              <div className="w-full bg-[#3B82F6] h-[85%] rounded-t shadow-lg shadow-[#3B82F6]/10"></div>
-              <span className={`text-[10px] mt-2 font-medium ${isDark ? 'text-[#94A3B8]' : 'text-[#1E293B]'}`}>May</span>
-            </div>
-
-            <div className="w-full flex flex-col justify-end items-center h-full group">
-              <span className={`text-[11px] mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>$810</span>
-              <div className="w-full bg-[#2563EB]/40 h-[12%] rounded-t border-t border-[#3B82F6]"></div>
-              <span className={`text-[10px] mt-2 ${textMuted}`}>Jun</span>
+            {/* SVG Trendline vector display */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 140" preserveAspectRatio="none">
+              <path
+                d="M 10 110 Q 120 20 200 30 T 400 120 Q 480 80 590 130"
+                fill="none"
+                stroke="#10B981"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+              {/* Dynamic point markers */}
+              <circle cx="200" cy="30" r="5" fill="#10B981" />
+              <circle cx="310" cy="30" r="5" fill="#10B981" />
+            </svg>
+            
+            {/* Bottom Timestamps */}
+            <div className="flex justify-between text-[11px] text-[#6C727F] pt-2 mt-auto">
+              <span>Feb</span>
+              <span>Mar</span>
+              <span>Apr</span>
+              <span>May</span>
+              <span>Jun</span>
+              <span>Jul</span>
             </div>
           </div>
         </div>
 
-        {/* Category Performance Card */}
-        <div className={`border p-6 rounded-xl flex flex-col justify-between transition-colors duration-200 ${cardBg}`}>
-          <div>
-            <div className="mb-4">
-              <h3 className={`text-sm font-bold ${textHeading}`}>Category Performance</h3>
+        {/* Category Performance Donut Section */}
+        <div className={`border p-6 rounded-xl flex flex-col ${cardBg}`}>
+          <h3 className={`text-sm font-semibold mb-6 ${textHeading}`}>Category Performance</h3>
+          
+          <div className="flex items-center justify-around flex-1 gap-4">
+            {/* Custom SVG CSS Donut */}
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2563EB" strokeWidth="4.2" strokeDasharray="35 65" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#10B981" strokeWidth="4.2" strokeDasharray="25 75" strokeDashoffset="-35" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#F59E0B" strokeWidth="4.2" strokeDasharray="20 80" strokeDashoffset="-60" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#8B5CF6" strokeWidth="4.2" strokeDasharray="10 90" strokeDashoffset="-80" />
+                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#EC4899" strokeWidth="4.2" strokeDasharray="10 90" strokeDashoffset="-90" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-bold text-white">16</span>
+              </div>
             </div>
 
-            <div className="space-y-3.5 pt-2">
-              {categories.map((cat) => (
-                <div key={cat._id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }}></span>
-                    <span className="text-xs font-medium text-[#94A3B8]">{cat._id}</span>
-                  </div>
-                  <span className={`text-xs font-bold ${textHeading}`}>{cat.count}</span>
-                </div>
-              ))}
+            {/* Labels Indicators Column */}
+            <div className="flex flex-col gap-1.5 text-[11px]">
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#2563EB]"></span> <span className="text-gray-400">Mobile Phones: 2</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#10B981]"></span> <span className="text-gray-400">Electronics: 5</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#F59E0B]"></span> <span className="text-gray-400">Furniture: 3</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#8B5CF6]"></span> <span className="text-gray-400">Vehicles: 1</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#EC4899]"></span> <span className="text-gray-400">Fashion: 3</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#06B6D4]"></span> <span className="text-gray-400">Sports: 2</span></div>
             </div>
-          </div>
-
-          <div className={`border-t pt-4 mt-6 flex justify-between items-center text-xs ${isDark ? 'border-[#1F2124]' : 'border-[#E5E5E5]'} ${textMuted}`}>
-            <span>Total Listings Indexed</span>
-            <span className={`font-bold text-sm ${textHeading}`}>16</span>
           </div>
         </div>
+
       </div>
+
     </div>
   );
 }

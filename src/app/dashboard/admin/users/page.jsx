@@ -1,206 +1,246 @@
-// src/app/dashboard/admin/users/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '../../../../context/ThemeContext';
 
-export default function ManageUsersPage() {
+export default function AdminManageUsersPage() {
   const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const [users, setUsers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function fetchUsers() {
+  // Styles
+  const pageBg = isDark ? 'bg-[#0B0C0E] text-[#E2E8F0]' : 'bg-[#F8FAFC] text-[#1E293B]';
+  const containerBg = isDark ? 'bg-[#121316] border-[#1F2124]' : 'bg-white border-[#E2E8F0]';
+  const textHeading = isDark ? 'text-white' : 'text-[#0F172A]';
+  const textMuted = isDark ? 'text-[#6C727F]' : 'text-[#64748B]';
+  const inputBg = isDark ? 'bg-[#1A1C20] border-[#25282C] text-white' : 'bg-white border-[#CBD5E1] text-[#1E293B]';
+  const tableHeaderBg = isDark ? 'bg-[#18191D]' : 'bg-[#F1F5F9]';
+  const borderDivider = isDark ? 'border-[#1F2124]' : 'border-[#F1F5F9]';
+  const rowHover = isDark ? 'hover:bg-[#18191D]' : 'hover:bg-[#F8FAFC]';
+
+  const getCleanToken = () => {
+    // 1. Get the raw value - Added 'resell_token' as the primary key
+    const rawToken = localStorage.getItem('resell_token') || 
+                     localStorage.getItem('token') || 
+                     localStorage.getItem('admin_token') || 
+                     localStorage.getItem('userToken') ||
+                     localStorage.getItem('adminUser');
+
+    if (!rawToken) return '';
+
+    // 2. If it's a JSON string, parse it to extract the token property
+    if (rawToken.startsWith('{')) {
       try {
-        setLoading(true);
-        setError(null);
-        
-        const token = localStorage.getItem('token'); 
-
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          }
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Server status ${res.status}: Check if you are authorized/logged in as Admin.`);
-        }
-        
-        const jsonResponse = await res.json();
-        
-        if (jsonResponse.success && Array.isArray(jsonResponse.data)) {
-          setUsers(jsonResponse.data);
-        } else {
-          setUsers([]);
-        }
-      } catch (err) {
-        console.error('Error fetching platform users:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+        const parsed = JSON.parse(rawToken);
+        // Common structures for JWT storage
+        return parsed.token || parsed.accessToken || parsed.tokenString || '';
+      } catch (e) {
+        console.error("Failed to parse token object:", e);
+        return '';
       }
     }
-    fetchUsers();
-  }, []);
+    
+    // 3. Otherwise, return the raw string
+    return rawToken;
+  };
 
-  const handleToggleBlock = async (userId, currentStatus) => {
-    const nextStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
+  const fetchUsersFromDB = async (query = '') => {
     try {
-      const token = localStorage.getItem('token');
+      setLoading(true);
+      setError('');
+      
+      const token = getCleanToken();
+      const apiBaseUrl = 'http://localhost:5000';
+      
+      const res = await fetch(`${apiBaseUrl}/api/admin/users?search=${query}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users/${userId}/status`, {
+      const result = await res.json();
+
+      if (res.ok) {
+        // Direct response array alignment handling
+        if (result && Array.isArray(result.data)) {
+          setUsers(result.data);
+        } else if (Array.isArray(result)) {
+          setUsers(result);
+        } else if (result && Array.isArray(result.users)) {
+          setUsers(result.users);
+        }
+      } else {
+        setError(`Backend Error (${res.status}): ${result.message || 'Failed to populate collections.'}`);
+        setUsers([]);
+      }
+    } catch (err) {
+      console.error('Connection failure tracking:', err);
+      setError('Could not connect to the database server. Ensure backend process is actively listening.');
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchUsersFromDB(search);
+    }, 300);
+    return () => clearTimeout(delayDebounce);
+  }, [search]);
+
+  const handleToggleStatus = async (userId, currentStatus) => {
+    const targetStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
+    try {
+      const token = getCleanToken();
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status: nextStatus })
+        body: JSON.stringify({ status: targetStatus })
       });
-      
-      const jsonResponse = await res.json();
 
-      if (res.ok && jsonResponse.success) {
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: nextStatus } : u));
+      const resData = await res.json();
+
+      if (res.ok && resData.success) {
+        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: targetStatus } : u));
       } else {
-        alert(jsonResponse.message || "Failed to update user status.");
+        alert(`Failed to update status: ${resData.message || 'Update rejected'}`);
       }
-    } catch (error) {
-      console.error('Failed to change user status in database:', error);
+    } catch (err) {
+      console.error(err);
+      alert('Could not update user status due to network error.');
     }
   };
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    const words = name.trim().split(' ');
-    if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
-    return name.slice(0, 2).toUpperCase();
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Permanently delete this user from MongoDB?')) return;
+    try {
+      const token = getCleanToken();
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const resData = await res.json();
+
+      if (res.ok && resData.success) {
+        setUsers(prev => prev.filter(u => u._id !== userId));
+      } else {
+        alert(`Failed to delete: ${resData.message || 'Deletion rejected'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Could not remove user due to network error.');
+    }
   };
-
-  const getAvatarBg = (role) => {
-    if (role === 'admin') return 'bg-[#2563EB] text-white';
-    if (role === 'seller') return 'bg-[#0EA5E9] text-white';
-    return 'bg-[#A855F7] text-white';
-  };
-
-  // FIXED: Bulletproof filtering that checks if fields exist before calling toLowerCase()
-  const filteredUsers = users.filter(user => {
-    const s = searchTerm.toLowerCase();
-    const nameMatch = user?.name ? user.name.toLowerCase().includes(s) : false;
-    const emailMatch = user?.email ? user.email.toLowerCase().includes(s) : false;
-    const locationMatch = user?.location ? user.location.toLowerCase().includes(s) : false;
-    
-    return nameMatch || emailMatch || locationMatch;
-  });
-
-  const isDark = theme === 'dark';
-  const textHeading = isDark ? 'text-white' : 'text-[#1A1A1A]';
-  const textSub = isDark ? 'text-[#94A3B8]' : 'text-[#64748B]';
-  const borderRule = isDark ? 'border-[#1F2124]' : 'border-[#E5E5E5]';
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className={`text-2xl font-bold tracking-tight transition-colors duration-200 ${textHeading}`}>
-          Manage Users ({filteredUsers.length})
-        </h1>
-      </div>
+    <div className={`min-h-screen p-8 transition-colors duration-200 ${pageBg}`}>
+      <div className={`border rounded-xl shadow-sm overflow-hidden ${containerBg}`}>
+        
+        <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className={`text-xl font-bold tracking-tight ${textHeading}`}>Manage Users</h1>
+            <p className={`text-xs mt-1 ${textMuted}`}>Live database data sourced directly from MongoDB cluster collections.</p>
+          </div>
 
-      {/* Search Input */}
-      <div className="w-full">
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className={`w-full text-sm px-4 py-3 rounded-lg border focus:outline-none transition-all duration-200 ${
-            isDark 
-              ? 'bg-[#121315] border-[#1F2124] text-white placeholder-[#4B5563] focus:border-[#3B82F6]' 
-              : 'bg-white border-[#E5E5E5] text-[#1A1A1A] placeholder-[#94A3B8] focus:border-[#2563EB]'
-          }`}
-        />
-      </div>
+          <div className="w-full sm:w-80">
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all ${inputBg}`}
+            />
+          </div>
+        </div>
 
-      {/* Database User Row List Layout */}
-      <div className="space-y-0.5">
+        {error && (
+          <div className="mx-6 mb-4 p-4 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex flex-col gap-2">
+            <span className="font-semibold">⚠️ {error}</span>
+          </div>
+        )}
+
         {loading ? (
-          <div className="p-8 text-center text-sm font-medium animate-pulse text-[#3B82F6]">
-            Loading platform database records...
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-sm text-red-500 border border-red-500/20 rounded-lg bg-red-500/5">
-            Error: {error}. Make sure you are logged in as admin to access protected collections.
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className={`p-8 text-center text-sm border rounded-lg border-dashed ${textSub} ${borderRule}`}>
-            No database accounts found matching the search filter.
+          <div className="flex justify-center items-center h-56">
+            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          filteredUsers.map((user) => (
-            <div 
-              key={user._id}
-              className={`flex items-center justify-between p-4 border-b transition-colors duration-200 ${borderRule} ${
-                isDark ? 'hover:bg-[#121315]/50' : 'hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm tracking-wide shrink-0 ${getAvatarBg(user.role)}`}>
-                  {getInitials(user.name)}
-                </div>
-                <div>
-                  <h3 className={`text-sm font-bold tracking-wide transition-colors duration-200 ${textHeading}`}>
-                    {user.name}
-                  </h3>
-                  <p className={`text-xs transition-colors duration-200 ${textSub}`}>
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-6">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${
-                  user.role === 'admin' 
-                    ? 'bg-[#A855F7]/10 text-[#C084FC]' 
-                    : user.role === 'seller' 
-                      ? 'bg-[#10B981]/10 text-[#34D399]' 
-                      : 'bg-[#3B82F6]/10 text-[#60A5FA]'
-                }`}>
-                  {user.role}
-                </span>
-
-                <span className={`text-[11px] font-medium shrink-0 ${
-                  user.status === 'blocked' ? 'text-[#EF4444]' : 'text-[#22C55E]'
-                }`}>
-                  {user.status || 'active'}
-                </span>
-
-                <span className={`text-xs hidden sm:inline tracking-wide font-medium min-w-[120px] text-right transition-colors duration-200 ${
-                  isDark ? 'text-[#64748B]' : 'text-[#71717A]'
-                }`}>
-                  {user.location || 'Not Specified'}
-                </span>
-
-                {user.role !== 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleBlock(user._id, user.status)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all shrink-0 ${
-                      user.status === 'blocked'
-                        ? 'bg-[#22C55E]/10 text-[#22C55E] hover:bg-[#22C55E]/20'
-                        : 'text-[#F59E0B] hover:bg-[#F59E0B]/10'
-                    }`}
-                  >
-                    <span>🔒</span>
-                    {user.status === 'blocked' ? 'Unblock' : 'Block'}
-                  </button>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm border-collapse">
+              <thead className={`${tableHeaderBg} text-gray-400 border-b ${borderDivider}`}>
+                <tr>
+                  <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">User Name</th>
+                  <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Email Address</th>
+                  <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              
+              <tbody className="divide-y divide-transparent">
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className={`px-6 py-14 text-center ${textMuted}`}>
+                      No user documents found matching criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user) => (
+                    <tr key={user._id} className={`transition-colors border-b ${borderDivider} ${rowHover}`}>
+                      <td className={`px-6 py-4 font-medium tracking-tight ${textHeading}`}>{user.name}</td>
+                      <td className={`px-6 py-4 ${isDark ? 'text-[#A0AEC0]' : 'text-[#4A5568]'}`}>{user.email}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                          user.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                          user.role === 'seller' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                          'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        }`}>
+                          {user.role || 'buyer'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                          user.status === 'blocked' 
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
+                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        }`}>
+                          {user.status || 'active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                        <button
+                          onClick={() => handleToggleStatus(user._id, user.status || 'active')}
+                          className={`px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all ${
+                            user.status === 'blocked'
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                              : 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
+                          }`}
+                        >
+                          {user.status === 'blocked' ? 'Unblock' : 'Block'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user._id)}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold tracking-wide transition-all shadow-sm"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 )}
-              </div>
-            </div>
-          ))
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

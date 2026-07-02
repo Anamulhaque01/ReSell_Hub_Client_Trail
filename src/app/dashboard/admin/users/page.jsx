@@ -54,7 +54,7 @@ export default function AdminManageUsersPage() {
       setError('');
       
       const token = getCleanToken();
-      const apiBaseUrl = 'http://localhost:5000';
+      const apiBaseUrl = 'https://re-sell-hub-server-phi.vercel.app';
       
       const res = await fetch(`${apiBaseUrl}/api/admin/users?search=${query}`, {
         method: 'GET',

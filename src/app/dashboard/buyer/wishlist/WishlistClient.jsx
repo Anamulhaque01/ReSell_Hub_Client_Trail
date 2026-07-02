@@ -49,7 +49,7 @@ export default function WishlistClient() {
   };
 
   const handleBuyNow = (productId) => {
-    router.push(`/checkout/${productId}`);
+    router.push(`/products/${productId}`);
   };
 
   if (loading) {

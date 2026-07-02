@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
 
 const getConditionStyles = (condition) => {
   switch (condition?.toLowerCase()) {
@@ -22,162 +23,221 @@ const getConditionStyles = (condition) => {
 };
 
 export default function FeaturedProducts() {
+  const { token } = useAuth();
   const [products, setProducts] = useState([]);
+  const [wishlistIds, setWishlistIds] = useState([]); // Tracks saved products
   const [loading, setLoading] = useState(true);
 
+  // 1. Fetch featured products
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       setLoading(true);
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        // Explicitly set limit to 8 matching the required layout count
-        const response = await fetch(`${baseUrl}/products?limit=8`);
-        const data = await response.json();
-
-        // Robust adaptation layer matching the All Products page logic
-        if (Array.isArray(data)) {
-          setProducts(data.slice(0, 8));
-        } else if (data && data.success) {
-          setProducts((data.products || []).slice(0, 8));
-        } else if (data && data.products) {
-          setProducts((data.products).slice(0, 8));
-        } else {
-          setProducts([]);
+        const res = await fetch(`${baseUrl}/products?limit=3&sort=newest`);
+        const data = await res.json();
+        if (res.ok) {
+          setProducts(data.products || []);
         }
-      } catch (error) {
-        console.error("Error loading featured products:", error);
-        setProducts([]);
+      } catch (err) {
+        console.error("Error loading featured products:", err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchFeaturedProducts();
   }, []);
 
-  if (loading) {
-    return (
-      <section className="w-full py-16 bg-[#FAF9F6] dark:bg-[#0B0B0F] transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="h-8 w-48 bg-gray-200 dark:bg-zinc-800 animate-pulse rounded-md mb-8" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="animate-pulse bg-gray-50 dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-xl p-3 h-[440px] flex flex-col justify-between" />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
+  // 2. Sync wishlist state for logged-in buyer
+  useEffect(() => {
+    if (!token) {
+      setWishlistIds([]);
+      return;
+    }
+    const fetchCurrentWishlist = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const response = await fetch(`${baseUrl}/buyer/wishlist`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setWishlistIds(data.map((item) => item._id));
+        }
+      } catch (err) {
+        console.error("Error reading wishlist states inside features component:", err);
+      }
+    };
+    fetchCurrentWishlist();
+  }, [token]);
+
+  // 3. Handle interactive toggle action
+  const handleToggleWishlist = async (productId) => {
+    if (!token) {
+      alert("Please sign in to save items to your wishlist!");
+      return;
+    }
+
+    const isSaved = wishlistIds.includes(productId);
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+    try {
+      if (isSaved) {
+        // Remove item from wishlist array
+        const res = await fetch(`${baseUrl}/buyer/wishlist/${productId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setWishlistIds((prev) => prev.filter((id) => id !== productId));
+        }
+      } else {
+        // Add item to wishlist array
+        const res = await fetch(`${baseUrl}/buyer/wishlist`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ productId })
+        });
+        if (res.ok) {
+          setWishlistIds((prev) => [...prev, productId]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update wishlist item state:", err);
+    }
+  };
 
   return (
-    <section id="featured-products" className="w-full py-16 bg-[#FAF9F6] text-[#1A1A1A] dark:bg-[#0B0B0F] dark:text-[#F5F5F5] transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-20 bg-white dark:bg-neutral-950 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+      <div className="max-w-7xl mx-auto">
         
-        {/* Header Block matching the exact screen alignment design */}
-        <div className="flex justify-between items-end mb-8">
+        {/* Section Heading Header Block */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
-            <span className="text-xs font-semibold tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1 rounded-full uppercase">
-              Featured
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-widest block mb-2">
+              🔥 Hot Deals
             </span>
-            <h2 className="text-3xl font-bold tracking-tight mt-3">
-              Hot Deals Right Now ...
+            <h2 className="text-3xl font-extrabold text-neutral-900 dark:text-neutral-50 tracking-tight sm:text-4xl">
+              Featured Products
             </h2>
+            <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400 max-w-xl">
+              Explore the latest high-quality items listed by certified sellers. Secure transactions and premium grading verified.
+            </p>
           </div>
           <button 
-            onClick={() => window.location.href = '/products'}
-            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 transition-all"
+            onClick={() => window.location.href = "/products"}
+            className="self-start md:self-end text-xs font-bold text-blue-600 dark:text-blue-500 hover:underline flex items-center gap-1 group whitespace-nowrap"
           >
-            View All <span>➔</span>
+            View All Marketplace Items 
+            <span className="transform group-hover:translate-x-0.5 transition-transform">→</span>
           </button>
         </div>
 
-        {/* Catalog Grid Area - Formatted to look precisely like image_a2c371.png */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {products.map((product, idx) => (
-            <motion.div
-              key={product._id || idx}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: idx * 0.05 }}
-              className="bg-white dark:bg-[#121214] border border-gray-100 dark:border-[#1d1d22] rounded-xl p-3 flex flex-col justify-between h-[440px] shadow-sm relative group transition-all duration-200"
-            >
-              {/* Product Media Container Frame matching the clean contain frame style */}
-              <div className="w-full h-48 rounded-lg overflow-hidden relative bg-white flex items-center justify-center border border-gray-100 dark:border-zinc-800">
-                <img 
-                  src={product.images?.[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80"} 
-                  alt={product.title} 
-                  className="max-h-full max-w-full object-contain p-2 transition-transform duration-300 group-hover:scale-102"
-                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80' }}
-                />
-
-                {/* Condition Badge Top Left */}
-                <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${getConditionStyles(product.condition)}`}>
-                  {product.condition || "Used"}
-                </span>
-
-                {/* View Counter Badge Top Right */}
-                <span className="absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-black/60 text-white backdrop-blur-sm flex items-center gap-1 border border-white/10">
-                  👁️ {product.views || Math.floor(Math.random() * 300) + 15}
-                </span>
-              </div>
-
-              {/* Text & Specs Details Block */}
-              <div className="mt-3 flex-grow flex flex-col justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-blue-500 transition-colors">
-                    {product.title}
-                  </h3>
-                  
-                  {/* Location Layout */}
-                  <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="truncate">{product.sellerInfo?.location || product.location || "Khulna, BD"}</span>
-                  </div>
-
-                  {/* Rating Layout Block */}
-                  <div className="flex items-center text-xs text-amber-500 font-bold gap-1 mt-1.5">
-                    <span>★</span>
-                    <span>4.6</span>
+        {/* Content Render Conditional Grid Block */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[...Array(3)].map((_, i) => (
+              <div 
+                key={i} 
+                className="animate-pulse bg-neutral-50 dark:bg-zinc-900/40 h-96 rounded-2xl border border-neutral-100 dark:border-zinc-900" 
+              />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-16 bg-neutral-50 dark:bg-zinc-900/20 rounded-2xl border border-dashed border-neutral-200 dark:border-zinc-800">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">No products are currently marked as featured listings.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {products.map((product) => (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.4 }}
+                key={product._id}
+                className="bg-neutral-50 dark:bg-zinc-900/30 border border-neutral-200/60 dark:border-zinc-900 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col group h-full"
+              >
+                {/* Product Image Wrapper */}
+                <div className="relative aspect-[4/3] w-full bg-neutral-200 dark:bg-zinc-800 overflow-hidden">
+                  <img
+                    src={product.images?.[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?ixlib=rb-4.0.3"}
+                    alt={product.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                  />
+                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase border backdrop-blur-md shadow-sm ${getConditionStyles(product.condition)}`}>
+                      {product.condition}
+                    </span>
                   </div>
                 </div>
 
-                {/* Price & Stock Container Area */}
-                <div className="flex justify-between items-baseline mt-2">
-                  <span className="text-lg font-bold text-blue-600 dark:text-blue-500 font-mono">
-                    ${Number(product.price).toLocaleString()}
-                  </span>
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                    Stock: {product.stock || 3}
-                  </span>
+                {/* Info Metadata Layout Wrapper */}
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[10px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-wider">
+                        {product.category}
+                      </span>
+                      <span className="text-sm font-black text-neutral-900 dark:text-neutral-50 font-mono">
+                        ${product.price?.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-neutral-800 dark:text-zinc-100 tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-500 transition-colors line-clamp-1">
+                      {product.title}
+                    </h3>
+
+                    <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                      {product.description}
+                    </p>
+
+                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-neutral-200/50 dark:border-zinc-800/60 text-[11px] text-neutral-400 dark:text-zinc-500">
+                      <span className="flex items-center gap-1 font-medium">
+                        📍 {product.location || "Bangladesh"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons Footer Area */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <button 
+                      onClick={() => window.location.href = `/products/${product._id}`}
+                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold tracking-wide transition-colors text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.99]"
+                    >
+                      View Deal
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleToggleWishlist(product._id)}
+                      className={`p-2 rounded-lg border transition-all duration-150 flex items-center justify-center active:scale-95 ${
+                        wishlistIds.includes(product._id)
+                          ? "bg-rose-500/10 border-rose-500/30 text-rose-500"
+                          : "border-gray-200 dark:border-zinc-800 text-gray-400 hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                      }`}
+                      aria-label={wishlistIds.includes(product._id) ? "Remove from wishlist" : "Add to wishlist"}
+                      title={wishlistIds.includes(product._id) ? "Remove from Wishlist" : "Save to Wishlist"}
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4" 
+                        fill={wishlistIds.includes(product._id) ? "currentColor" : "none"} 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              {/* Action Buttons Footer Area */}
-              <div className="flex items-center gap-2 mt-3">
-                <button 
-                  onClick={() => window.location.href = `/products/${product._id}`}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold tracking-wide transition-colors text-center flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  🛒 View Deal
-                </button>
-                <button 
-                  className="p-2 rounded-lg border border-gray-200 dark:border-zinc-800 hover:bg-black/5 dark:hover:bg-white/5 bg-red-500 text-white dark:bg-red-500/10 dark:text-red-500 transition-colors duration-150 flex items-center justify-center group/heart"
-                  aria-label="Add to wishlist"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover/heart:scale-110" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </button>
-              </div>
-
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
       </div>
     </section>

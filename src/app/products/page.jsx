@@ -1,8 +1,8 @@
-// src/app/products/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 
 const CATEGORIES = ['All Categories', 'Electronics', 'Furniture', 'Vehicles', 'Fashion', 'Mobile Phones'];
 const CONDITIONS = ['All Conditions', 'New', 'Like-New', 'Good', 'Fair', 'Poor'];
@@ -13,7 +13,9 @@ const SORT_OPTIONS = [
 ];
 
 export default function AllProductsPage() {
+    const { token } = useAuth();
     const [products, setProducts] = useState([]);
+    const [wishlistIds, setWishlistIds] = useState([]); 
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('All Categories');
@@ -29,213 +31,220 @@ export default function AllProductsPage() {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                // Construct clean explicit params matching assignment spec
-                const query = new URLSearchParams();
-                
-                if (search.trim()) query.append('search', search.trim());
-                if (category !== 'All Categories') query.append('category', category);
-                if (condition !== 'All Conditions') query.append('condition', condition);
-                if (sortOrder) query.append('sort', sortOrder);
-                if (minPrice) query.append('minPrice', minPrice);
-                if (maxPrice) query.append('maxPrice', maxPrice);
-                
-                query.append('page', page.toString());
-                query.append('limit', '8');
+                let url = `${process.env.NEXT_PUBLIC_API_URL}/products?page=${page}&limit=9&sort=${sortOrder}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                if (category !== 'All Categories') url += `&category=${encodeURIComponent(category)}`;
+                if (condition !== 'All Conditions') url += `&condition=${encodeURIComponent(condition)}`;
+                if (minPrice) url += `&minPrice=${minPrice}`;
+                if (maxPrice) url += `&maxPrice=${maxPrice}`;
 
-                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-                const response = await fetch(`${baseUrl}/products?${query.toString()}`);
-                const data = await response.json();
-
-                // Flexible adaptation layer for any database array configuration
-                if (Array.isArray(data)) {
-                    setProducts(data);
-                    setTotalCount(data.length);
-                    setTotalPages(1);
-                } else if (data && data.success) {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (res.ok) {
                     setProducts(data.products || []);
-                    setTotalCount(data.meta?.totalProducts ?? (data.products?.length || 0));
-                    setTotalPages(data.meta?.totalPages ?? 1);
-                } else if (data && data.products) {
-                    setProducts(data.products);
-                    setTotalCount(data.products.length);
-                    setTotalPages(1);
-                } else {
-                    setProducts([]);
-                    setTotalCount(0);
+                    setTotalPages(data.totalPages || 1);
+                    setTotalCount(data.totalCount || 0);
                 }
-            } catch (error) {
-                console.error("Error loading products from database:", error);
-                setProducts([]);
-                setTotalCount(0);
+            } catch (err) {
+                console.error("Error loading products:", err);
             } finally {
                 setLoading(false);
             }
         };
+        fetchProducts();
+    }, [page, search, category, condition, sortOrder, minPrice, maxPrice]);
 
-        // Simple debounce handler window for clean searching text states
-        const timer = setTimeout(() => {
-            fetchProducts();
-        }, 300);
+    useEffect(() => {
+        if (!token) {
+            setWishlistIds([]);
+            return;
+        }
+        const fetchCurrentWishlist = async () => {
+            try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/wishlist`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    setWishlistIds(data.map(item => item._id));
+                }
+            } catch (err) {
+                console.error("Error reading wishlist context states:", err);
+            }
+        };
+        fetchCurrentWishlist();
+    }, [token]);
 
-        return () => clearTimeout(timer);
-    }, [search, category, condition, sortOrder, minPrice, maxPrice, page]);
+    const handleToggleWishlist = async (productId) => {
+        if (!token) {
+            alert("Please sign in to save items to your wishlist!");
+            return;
+        }
 
-    const getConditionColor = (cond) => {
-        switch (cond?.toLowerCase()) {
-            case 'new': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-            case 'like-new': return 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20';
-            case 'good': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            case 'fair': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-            case 'poor': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
-            default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+        const isSaved = wishlistIds.includes(productId);
+
+        try {
+            if (isSaved) {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/wishlist/${productId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    setWishlistIds(prev => prev.filter(id => id !== productId));
+                }
+            } else {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/buyer/wishlist`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ productId })
+                });
+                if (res.ok) {
+                    setWishlistIds(prev => [...prev, productId]);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to update wishlist item state:", err);
         }
     };
 
     return (
-        <main className="min-h-screen bg-white dark:bg-[#0b0b0c] text-gray-900 dark:text-gray-100 py-10 px-4 sm:px-8 lg:px-16 transition-colors duration-200">
-            <div className="max-w-[1400px] mx-auto">
-
-                {/* Title Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold tracking-tight">Browse Products</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{totalCount} items found</p>
-                </div>
-
-                {/* Global Filter Bar Layout Section */}
-                <section className="space-y-3 mb-8">
-                    <div className="w-full">
+        <main className="min-h-screen bg-gray-50 dark:bg-neutral-950 pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                
+                <section className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 mb-8 shadow-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <input
                             type="text"
-                            placeholder="Search products..."
+                            placeholder="Search by product name..."
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            className="w-full px-4 py-2.5 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all text-gray-900 dark:text-white"
+                            className="w-full px-4 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                         />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
                         <select
                             value={category}
                             onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-                            className="px-3 py-2 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none cursor-pointer text-gray-900 dark:text-white"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg focus:outline-none text-gray-900 dark:text-white"
                         >
-                            {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
-
                         <select
                             value={condition}
                             onChange={(e) => { setCondition(e.target.value); setPage(1); }}
-                            className="px-3 py-2 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none cursor-pointer text-gray-900 dark:text-white"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg focus:outline-none text-gray-900 dark:text-white"
                         >
-                            {CONDITIONS.map(cond => <option key={cond} value={cond}>{cond}</option>)}
+                            {CONDITIONS.map((cond) => <option key={cond} value={cond}>{cond}</option>)}
                         </select>
+                    </div>
 
-                        <select
-                            value={sortOrder}
-                            onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
-                            className="px-3 py-2 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none cursor-pointer text-gray-900 dark:text-white"
-                        >
-                            {SORT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
-
+                    <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-gray-100 dark:border-zinc-800">
                         <div className="flex items-center space-x-2">
                             <input
                                 type="number"
-                                placeholder="Min ৳"
+                                placeholder="Min Price"
                                 value={minPrice}
                                 onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
-                                className="w-24 px-3 py-2 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none text-center text-gray-900 dark:text-white"
+                                className="w-24 px-3 py-1.5 text-xs bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white"
                             />
-                            <span className="text-gray-400">—</span>
+                            <span className="text-gray-400 text-xs">to</span>
                             <input
                                 type="number"
-                                placeholder="Max ৳"
+                                placeholder="Max Price"
                                 value={maxPrice}
                                 onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
-                                className="w-24 px-3 py-2 bg-white dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-lg focus:outline-none text-center text-gray-900 dark:text-white"
+                                className="w-24 px-3 py-1.5 text-xs bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white"
                             />
                         </div>
+                        <select
+                            value={sortOrder}
+                            onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
+                            className="px-3 py-1.5 text-xs bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg focus:outline-none text-gray-900 dark:text-white"
+                        >
+                            {SORT_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
                     </div>
                 </section>
 
-                {/* Catalog Grid Area */}
                 {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                        {[...Array(4)].map((_, idx) => (
-                            <div key={idx} className="animate-pulse bg-gray-50 dark:bg-[#121214] border border-gray-200 dark:border-zinc-800 rounded-xl p-3 h-[440px] flex flex-col justify-between">
-                                <div className="w-full h-48 bg-gray-200 dark:bg-zinc-800 rounded-lg" />
-                                <div className="h-4 bg-gray-200 dark:bg-zinc-800 rounded w-3/4 my-2" />
-                                <div className="h-4 bg-gray-200 dark:bg-zinc-800 rounded w-1/2" />
-                                <div className="h-10 bg-gray-200 dark:bg-zinc-800 rounded w-full mt-4" />
-                            </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="animate-pulse bg-white dark:bg-zinc-900 h-80 rounded-xl border border-gray-200 dark:border-zinc-800" />
                         ))}
                     </div>
+                ) : products.length === 0 ? (
+                    <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">No products found matching your current search parameters.</p>
+                    </div>
                 ) : (
-                    <AnimatePresence mode="popLayout">
-                        {products.length === 0 ? (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 border border-dashed border-gray-200 dark:border-zinc-800 rounded-xl w-full">
-                                <p className="text-gray-400">No items found matching your filter selection inside the database.</p>
-                            </motion.div>
-                        ) : (
-                            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                                {products.map((product) => (
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        key={product._id}
-                                        className="bg-white dark:bg-[#121214] border border-gray-100 dark:border-[#1d1d22] rounded-xl p-3 flex flex-col justify-between h-[440px] shadow-sm relative group"
-                                    >
-                                        <div className="w-full h-48 rounded-lg overflow-hidden relative bg-white flex items-center justify-center border border-gray-100 dark:border-zinc-800">
-                                            <img
-                                                src={product.images?.[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80'}
-                                                alt={product.title}
-                                                className="max-h-full max-w-full object-contain p-2"
-                                                onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80' }}
-                                            />
-                                            <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded border ${getConditionColor(product.condition)}`}>
-                                                {product.condition}
-                                            </span>
+                    <AnimatePresence mode='popLayout'>
+                        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {products.map((product) => (
+                                <motion.div
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    key={product._id}
+                                    className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow group h-full"
+                                >
+                                    <div className="relative aspect-[4/3] bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                                        <img
+                                            src={product.images?.[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?ixlib=rb-4.0.3'}
+                                            alt={product.title}
+                                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <span className="absolute top-2 left-2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-medium border border-gray-100 dark:border-zinc-800 text-gray-700 dark:text-zinc-300">
+                                            {product.condition}
+                                        </span>
+                                    </div>
+
+                                    <div className="p-4 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">{product.category}</span>
+                                                <span className="text-xs font-bold text-gray-900 dark:text-white">${product.price?.toLocaleString()}</span>
+                                            </div>
+                                            <h3 className="text-sm font-bold text-gray-800 dark:text-zinc-100 tracking-tight line-clamp-1">{product.title}</h3>
+                                            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 line-clamp-2">{product.description}</p>
                                         </div>
 
-                                        <div className="mt-3 flex-grow flex flex-col justify-between">
-                                            <div>
-                                                <h3 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-blue-500 transition-colors">
-                                                    {product.title}
-                                                </h3>
-                                                <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                    <span>{product.sellerInfo?.location || product.location || 'Khulna, BD'}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-baseline mt-2">
-                                                <span className="text-lg font-bold text-blue-600 dark:text-blue-500 font-mono">
-                                                    ৳{Number(product.price).toLocaleString()}
-                                                </span>
-                                                <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                                    {product.category}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 mt-3">
+                                        <div className="flex items-center gap-2 mt-4">
                                             <button
                                                 onClick={() => window.location.href = `/products/${product._id}`}
-                                                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold tracking-wide transition-colors text-center"
+                                                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold tracking-wide transition-colors text-center shadow-sm active:scale-[0.99]"
                                             >
                                                 View Deal
                                             </button>
+
+                                            <button
+                                                onClick={() => handleToggleWishlist(product._id)}
+                                                className={`p-2 rounded-lg border transition-all duration-200 flex items-center justify-center active:scale-95 ${
+                                                    wishlistIds.includes(product._id)
+                                                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                                                        : 'border-gray-200 dark:border-zinc-800 text-gray-400 hover:text-rose-500 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                                                }`}
+                                                title={wishlistIds.includes(product._id) ? "Remove from Wishlist" : "Save to Wishlist"}
+                                            >
+                                                <svg
+                                                    className="w-4 h-4"
+                                                    fill={wishlistIds.includes(product._id) ? "currentColor" : "none"}
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                </svg>
+                                            </button>
                                         </div>
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </motion.div>
                     </AnimatePresence>
                 )}
 
-                {/* Pagination Navigation Section */}
                 {totalPages > 1 && (
                     <section className="flex justify-center items-center space-x-2 mt-12">
                         <button

@@ -218,23 +218,33 @@ export default function AdminManageUsersPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleStatus(user._id, user.status || 'active')}
-                          className={`px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all ${
-                            user.status === 'blocked'
-                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                              : 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
-                          }`}
-                        >
-                          {user.status === 'blocked' ? 'Unblock' : 'Block'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user._id)}
-                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold tracking-wide transition-all shadow-sm"
-                        >
-                          Delete
-                        </button>
-                      </td>
+                          {user.role === 'admin' ? (
+                            // What to show if the user IS an admin
+                            <span className={`px-3 py-1.5 rounded text-xs font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                              Restricted
+                            </span>
+                          ) : (
+                            // What to show if the user is NOT an admin (Your original buttons)
+                            <>
+                              <button
+                                onClick={() => handleToggleStatus(user._id, user.status || 'active')}
+                                className={`px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all ${
+                                  user.status === 'blocked'
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                    : 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
+                                }`}
+                              >
+                                {user.status === 'blocked' ? 'Unblock' : 'Block'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user._id)}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold tracking-wide transition-all shadow-sm"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </td>
                     </tr>
                   ))
                 )}
